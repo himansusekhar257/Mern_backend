@@ -1,0 +1,4 @@
+{
+    "JWT_SECRET": "anythingelsehere",
+    "REFRESH_TOKEN_SECRET": "anythingelseherewithrefresh"
+}
