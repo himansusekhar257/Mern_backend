@@ -11,7 +11,8 @@ const mongoSanitize = require('express-mongo-sanitize');
 require('./config/googleStetegy')
 dotenv.config();
 
-const userRoutes = require('./routes/userRoutes');
+require('./cronjob')
+
 const passport = require('passport');
 
 const app = express();
@@ -50,7 +51,7 @@ app.use(cookieParser());
 const PORT = process.env.PORT || 5000;
 const MONGOOSE_URL = process.env.MONGOOSE_URL || "mongodb://127.0.0.1:27017/nodepractice";
 
-mongoose.connect(MONGOOSE_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(MONGOOSE_URL)
     .then(() => {
         app.listen(PORT, () => {
             console.log(`Server is running at port ${PORT}`);
@@ -60,9 +61,28 @@ mongoose.connect(MONGOOSE_URL, { useNewUrlParser: true, useUnifiedTopology: true
         console.error("MongoDB connection error:", err);
     });
 
-app.use('/api/users', userRoutes);
+    //authRoutes
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/users', authRoutes);
 
-app.get('/auth/google', passport.authenticate('google', { session: false, scope: ['profile'] }));
+    //adminRoutes
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api/admin', adminRoutes);
+
+
+    //commonRoutes
+const commonRoutes = require('./routes/commonRoute');
+app.use('/api', commonRoutes);
+
+//subscriptionRoutes
+const subscriptionRoutes = require('./routes/subscription/subscripptionRoutes')
+app.use('/api', subscriptionRoutes)
+
+//paymentRoutes
+const paymentRoutes = require('./routes/paymentRoutes')
+app.use('/api/payment',paymentRoutes)
+
+app.get('/auth/google', passport.authenticate('google', { session: false, scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: 'http://localhost:3000/account/login' }),
 (req, res) => {

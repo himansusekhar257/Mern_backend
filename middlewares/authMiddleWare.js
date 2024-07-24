@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('config');
+const User = require('../models/userModel');
 
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -19,4 +20,20 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-module.exports = authMiddleware;
+const isAdmin = async (req, res, next) => {
+    try {
+        const adminDetails = await User.findById(req.user.id);
+        if (!adminDetails) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        if (adminDetails.role === 1) {
+            next();
+        } else {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+module.exports = {authMiddleware, isAdmin};

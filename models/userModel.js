@@ -17,7 +17,7 @@ const userSchema = new Schema({
     },
     phoneNumber: {
         type: String,
-        required: true
+        // required: true
         // Add any validation or additional settings as needed
     },
     password: {
@@ -27,6 +27,11 @@ const userSchema = new Schema({
     profilePicture: {
         type: String // Store the URL of the profile picture in AWS S3
     },
+
+    role: {
+        type: Number,
+        default: 0
+    }
     // You can add more fields as needed
 }, {
     timestamps: true // Adds createdAt and updatedAt fields automatically

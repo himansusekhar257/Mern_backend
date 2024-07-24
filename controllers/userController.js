@@ -40,7 +40,7 @@ const generateTokens = (user) => {
     const accessToken = jwt.sign({
         email: user.email,
         id: user._id,
-    }, config.get('JWT_SECRET'), { expiresIn: '15m' });
+    }, config.get('JWT_SECRET'), { expiresIn: '45m' });
 
     const refreshToken = jwt.sign({
         email: user.email,
@@ -49,6 +49,7 @@ const generateTokens = (user) => {
 
     return { accessToken, refreshToken };
 };
+
 
 // Signup controller
 const signupController = async (req, res) => {
@@ -66,8 +67,7 @@ const signupController = async (req, res) => {
                 sameSite: 'lax', // Set SameSite to lax for development and sameSite: 'strict' use for ensure the cookie is only sent with requests originating from same site
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days // it's the expire
             });
-
-            res.status(200).json({ result: newUser, accessToken });
+            res.status(201).json({ result: newUser, accessToken });
         } else {
             // Handle regular signup with email/password and uploaded file
             const errors = validationResult(req);
@@ -85,7 +85,7 @@ const signupController = async (req, res) => {
 
             const alreadyExistUser = await User.findOne({ email });
             if (alreadyExistUser) {
-                return res.status(400).json({ message: 'User already exists' });
+                return res.status(403).json({ message: 'User already exists' });
             }
 
             const hashPassword = await bcrypt.hash(password, 12);
@@ -97,6 +97,7 @@ const signupController = async (req, res) => {
                 phoneNumber,
                 password: hashPassword,
                 profilePicture: profilePicture ? profilePicture.location : null, // Save S3 URL to profilePicture field if file uploaded
+                
             });
 
             await newUser.save();
@@ -106,9 +107,9 @@ const signupController = async (req, res) => {
             res.setHeader('Authorization', `Bearer ${accessToken}`);
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,  //This flag ensures that the cookie is not accessible via JavaScript (document.cookie), which helps protect against cross-site scripting (XSS) attacks.
-            secure: false, // Ensure secure is false for development/ secure: process.env.NODE_ENV === 'production': This flag ensures that the cookie is only sent over HTTPS connections. It is set to true when the application is running in a production environment.
-            sameSite: 'lax', // Set SameSite to lax for development and sameSite: 'strict' use for ensure the cookie is only sent with requests originating from same site
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days // it's the expire
+                secure: false, // Ensure secure is false for development/ secure: process.env.NODE_ENV === 'production': This flag ensures that the cookie is only sent over HTTPS connections. It is set to true when the application is running in a production environment.
+                sameSite: 'lax', // Set SameSite to lax for development and sameSite: 'strict' use for ensure the cookie is only sent with requests originating from same site
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days // it's the expire
             });
 
             res.status(201).json({ result: newUser, accessToken }); // Changed to 201 Created
@@ -158,12 +159,12 @@ const signinController = async (req, res) => {
 
             const alreadyExistUser = await User.findOne({ email });
             if (!alreadyExistUser) {
-                return res.status(400).json({ message: "User doesn't exist" });
+                return res.status(400).json({ success: false, message: "User doesn't exist" });
             }
 
             const isPasswordCorrect = await bcrypt.compare(password, alreadyExistUser.password);
             if (!isPasswordCorrect) {
-                return res.status(400).json({ message: 'Invalid credentials' });
+                return res.status(400).json({ success: false, message: 'Invalid credentials' });
             }
 
             const { accessToken, refreshToken } = generateTokens(alreadyExistUser);
@@ -171,16 +172,16 @@ const signinController = async (req, res) => {
             res.setHeader('Authorization', `Bearer ${accessToken}`);
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,  //This flag ensures that the cookie is not accessible via JavaScript (document.cookie), which helps protect against cross-site scripting (XSS) attacks.
-            secure: false, // Ensure secure is false for development/ secure: process.env.NODE_ENV === 'production': This flag ensures that the cookie is only sent over HTTPS connections. It is set to true when the application is running in a production environment.
-            sameSite: 'lax', // Set SameSite to lax for development and sameSite: 'strict' use for ensure the cookie is only sent with requests originating from same site
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days // it's the expire
+                secure: false, // Ensure secure is false for development/ secure: process.env.NODE_ENV === 'production': This flag ensures that the cookie is only sent over HTTPS connections. It is set to true when the application is running in a production environment.
+                sameSite: 'lax', // Set SameSite to lax for development and sameSite: 'strict' use for ensure the cookie is only sent with requests originating from same site
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days // it's the expire
             });
 
-            res.status(200).json({ result: alreadyExistUser, accessToken });
+            res.status(200).json({ success: true, msg: 'Login Successfull!', result: alreadyExistUser, accessToken});
         }
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -222,9 +223,37 @@ const refreshTokenController = async (req, res) => {
     }
 };
 
+const getUser = async (req, res) => {
+    try {
+        const allUser = await User.find();
+        res.status(200).json({ allUser: allUser })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "internal server error" })
+    }
+}
+
+const getUserById = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        console.log("userID",req.user.id);
+        const user = await User.findOne({_id: userId})
+        if (!user) {
+            res.status(404).json({ message: 'User Not Found' })
+        }
+        res.status(200).json({ result: user })
+        // res.status(200).json({ getUserById })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+console.log("alluser".allUser);
 module.exports = {
     signinController,
     signupController,
     refreshTokenController,
-    generateTokens
+    generateTokens,
+    getUser,
+    getUserById
 };
